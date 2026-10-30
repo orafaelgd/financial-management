@@ -1,21 +1,10 @@
 public class OperacaoFinanceira {
-  private int dia;
-  private int mes;
-  private int ano;
-
   private double valor;
   private String descricao;
+  private CalculaDiaSemana data;
 
-  public void setDia(int d) {
-    dia = d;
-  }
-
-  public void setMes(int m) {
-    mes = m;
-  }
-
-  public void setAno(int a) {
-    ano = a;
+  public void setData(int d, int m, int an) {
+    data = new CalculaDiaSemana(d, m, an);
   }
 
   public void setValor(double v) {
@@ -26,18 +15,6 @@ public class OperacaoFinanceira {
     descricao = d;
   }
 
-  public int getDia() {
-    return dia;
-  }
-
-  public int getMes() {
-    return mes;
-  }
-
-  public int getAno() {
-    return ano;
-  }
-
   public double getValor() {
     return valor;
   }
@@ -46,18 +23,22 @@ public class OperacaoFinanceira {
     return descricao;
   }
 
+  public String getData() {
+    String dia = String.valueOf(data.getDia());
+    String mes = String.valueOf(data.getMes());
+    String ano = String.valueOf(data.getAno());
+
+    return String.format("%s / %s / %s", dia, mes, ano);
+  }
+
   public OperacaoFinanceira() {
-    dia = 0;
-    mes = 0;
-    ano = 0;
     valor = 0;
     descricao = "";
+    data = new CalculaDiaSemana();
   }
 
   public void setCadastrarOperacao(int di, int me, int an, double va, String des) {
-    dia = di;
-    mes = me;
-    ano = an;
+    data = new CalculaDiaSemana(di, me, an);
     valor = va;
     descricao = des;
   }
