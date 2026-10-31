@@ -1,3 +1,4 @@
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -14,6 +15,7 @@ public class AplicacaoFinanceira {
     protected int TEMPOATUALIZADOAPLICACAO, TEMPOATUALIZADOEFETIVO;
     protected double IMPOSTOATUALDEVIDO;
     protected int DIA, MES, ANO;
+    private LocalDate ultimaDataProcessada;
 
     // 0 - nao cadastrada; 1 - ativa; 2 - bloqueada; 3 - cancelada.
     protected int STATUS;
@@ -29,6 +31,9 @@ public class AplicacaoFinanceira {
     public int setCadastro(String nmap, String nap, double vlap, double txdia, double txmes,
                            int tiporend, int tmpfinal, int tempomin, int tiporesg,
                            int tipoiof, int tipoimposto, int dd, int mm, int aaaa) {
+
+        LocalDate dataCadastro = LocalDate.of(aaaa, mm, dd);
+
         if (nmap == null || nmap.trim().isEmpty()) {
             throw new IllegalArgumentException("Informe o nome da aplicacao.");
         }
@@ -69,6 +74,8 @@ public class AplicacaoFinanceira {
         DIA = dd;
         MES = mm;
         ANO = aaaa;
+        // A data de cadastro representa o dia zero da aplicacao.
+        ultimaDataProcessada = dataCadastro;
         STATUS = 1;
         diasCalculos = 0;
         return STATUS;
@@ -176,20 +183,63 @@ public class AplicacaoFinanceira {
         incrementarDiaAplicacao();
     }
 
+    // Use este metodo para avancar o calendario, sem somar incrementos manuais.
     public void atualizarDiaAplicação(int d, int m, int a) {
-        incrementarDiaAplicacao();
+        if (ultimaDataProcessada == null) {
+            throw new IllegalStateException("Cadastre a aplicacao primeiro.");
+        }
+
+        LocalDate dataInformada = LocalDate.of(a, m, d);
+        int diaSemanaInformado = new CalculaDiaSemana(d, m, a).diaSemana();
+        if (diaSemanaInformado == 0 || diaSemanaInformado == 1) {
+            throw new IllegalArgumentException(
+                    "A atualizacao deve ocorrer de segunda a sexta-feira.");
+        }
+        if (dataInformada.isBefore(ultimaDataProcessada)) {
+            throw new IllegalArgumentException(
+                    "A data nao pode ser anterior a ultima atualizacao.");
+        }
+        if (STATUS != 1) {
+            return;
+        }
+
+        while (ultimaDataProcessada.isBefore(dataInformada)) {
+            LocalDate proximaData = ultimaDataProcessada.plusDays(1);
+            CalculaDiaSemana calendario = new CalculaDiaSemana(
+                    proximaData.getDayOfMonth(), proximaData.getMonthValue(),
+                    proximaData.getYear());
+            int diaSemana = calendario.diaSemana();
+
+            // Os dias corridos incluem sabados e domingos.
+            incrementarDia();
+            // Na CalculaDiaSemana: 0 = sabado e 1 = domingo. Nao considera feriados.
+            if (diaSemana != 0 && diaSemana != 1) {
+                incrementarDiaAplicacao();
+            }
+            ultimaDataProcessada = proximaData;
+        }
+
+        atualizarSaldo();
+    }
+
+    public int aporteValor(double valor) {
+        if (STATUS != 1 || !Double.isFinite(valor) || valor <= 0) {
+            return 0;
+        }
+        atualizarSaldo();
+        VALORAPLICADO += valor;
+        VALORATUALBRUTO += valor;
+        atualizarSaldo();
+        return 1;
     }
 
     // Recebe o valor liquido desejado. Retorna 1 para sucesso ou 0 para erro.
     public int resgateValor(double valorResgate) {
-        if (STATUS != 1 || !Double.isFinite(valorResgate) || valorResgate <= 0
-                || TEMPOATUALIZADOAPLICACAO < TEMPOMINIMOPERMANENCIA) {
+        if (STATUS != 1 || !Double.isFinite(valorResgate) || valorResgate <= 0 || TEMPOATUALIZADOAPLICACAO < TEMPOMINIMOPERMANENCIA) {
             return 0;
         }
         int periodo = getPeriodo(TIPORESGATE);
-        if (TIPORESGATE != 0 && TEMPOATUALIZADOAPLICACAO < TEMPOFINALINVESTIMENTO
-                && (TEMPOATUALIZADOAPLICACAO < periodo
-                    || TEMPOATUALIZADOAPLICACAO % periodo != 0)) {
+        if (TIPORESGATE != 0 && TEMPOATUALIZADOAPLICACAO < TEMPOFINALINVESTIMENTO && (TEMPOATUALIZADOAPLICACAO < periodo || TEMPOATUALIZADOAPLICACAO % periodo != 0)) {
             return 0;
         }
 

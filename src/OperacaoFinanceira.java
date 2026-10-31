@@ -1,3 +1,5 @@
+import java.time.LocalDate;
+
 public class OperacaoFinanceira {
   private double valor;
   private String descricao;
@@ -29,6 +31,10 @@ public class OperacaoFinanceira {
     String ano = String.valueOf(data.getAno());
 
     return String.format("%s / %s / %s", dia, mes, ano);
+  }
+
+  public LocalDate getDataOperacao() {
+    return LocalDate.of(data.getAno(), data.getMes(), data.getDia());
   }
 
   public OperacaoFinanceira() {
