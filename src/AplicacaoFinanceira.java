@@ -499,6 +499,28 @@ public class AplicacaoFinanceira {
         return diasCalculos;
     }
 
+    public LocalDate getUltimaDataProcessada() {
+        return ultimaDataProcessada;
+    }
+
+    public void setUltimaDataProcessada(LocalDate data) {
+        ultimaDataProcessada = data;
+    }
+
+    // Atualiza o controle de numeros somente depois que o arquivo foi lido.
+    void registrarDadosLidos(AplicacaoFinanceira anterior) {
+        String numeroAnterior = anterior.getNUMEROAPLICACAPFINANCEIRA();
+        String numero = NUMEROAPLICACAPFINANCEIRA;
+        if (!numero.isEmpty() && !numero.equals(numeroAnterior)
+                && numerosCadastrados.contains(numero)) {
+            throw new IllegalArgumentException("Numero de aplicacao ja cadastrado.");
+        }
+        numerosCadastrados.remove(numeroAnterior);
+        if (!numero.isEmpty()) {
+            numerosCadastrados.add(numero);
+        }
+    }
+
     public void setDiasCalculos(int dias) {
         if (dias < 0 || dias > TEMPOATUALIZADOEFETIVO) {
             throw new IllegalArgumentException("Dias pendentes de calculo invalidos.");

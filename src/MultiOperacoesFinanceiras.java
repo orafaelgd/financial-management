@@ -96,6 +96,14 @@ public class MultiOperacoesFinanceiras {
     return aplicacao.getVALORATUALLIQUIDO();
   }
 
+  public int arquivoSalvarDados(String nm) {
+    return new Arquivo(this).arquivoGravarDados(nm);
+  }
+
+  public int arquivoLerDados(String nm) {
+    return new Arquivo(this).arquivoLerDados(nm);
+  }
+
   public AplicacaoFinanceira getAplicacao() {
     return aplicacao;
   }
