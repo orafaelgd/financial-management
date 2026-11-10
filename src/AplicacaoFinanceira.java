@@ -509,16 +509,33 @@ public class AplicacaoFinanceira {
 
     // Atualiza o controle de numeros somente depois que o arquivo foi lido.
     void registrarDadosLidos(AplicacaoFinanceira anterior) {
-        String numeroAnterior = anterior.getNUMEROAPLICACAPFINANCEIRA();
-        String numero = NUMEROAPLICACAPFINANCEIRA;
-        if (!numero.isEmpty() && !numero.equals(numeroAnterior)
-                && numerosCadastrados.contains(numero)) {
-            throw new IllegalArgumentException("Numero de aplicacao ja cadastrado.");
+        registrarDadosLidos(new AplicacaoFinanceira[] { anterior },
+                new AplicacaoFinanceira[] { this });
+    }
+
+    static void registrarDadosLidos(AplicacaoFinanceira[] anteriores, AplicacaoFinanceira[] novas) {
+        Set<String> numerosAnteriores = new HashSet<>();
+        Set<String> numerosNovos = new HashSet<>();
+
+        for (AplicacaoFinanceira aplicacao : anteriores) {
+            if (!aplicacao.NUMEROAPLICACAPFINANCEIRA.isEmpty()) {
+                numerosAnteriores.add(aplicacao.NUMEROAPLICACAPFINANCEIRA);
+            }
         }
-        numerosCadastrados.remove(numeroAnterior);
-        if (!numero.isEmpty()) {
-            numerosCadastrados.add(numero);
+
+        for (AplicacaoFinanceira aplicacao : novas) {
+            String numero = aplicacao.NUMEROAPLICACAPFINANCEIRA;
+            if (numero.isEmpty()) {
+                continue;
+            }
+            if (!numerosNovos.add(numero)
+                    || (numerosCadastrados.contains(numero) && !numerosAnteriores.contains(numero))) {
+                throw new IllegalArgumentException("Numero de aplicacao ja cadastrado.");
+            }
         }
+
+        numerosCadastrados.removeAll(numerosAnteriores);
+        numerosCadastrados.addAll(numerosNovos);
     }
 
     public void setDiasCalculos(int dias) {
