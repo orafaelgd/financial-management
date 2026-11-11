@@ -5,14 +5,14 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 
-public class Cliente {
+public class ContaFinanceira {
   DadosPessoais cliente = new DadosPessoais();
   MultiOperacoesFinanceiras[] aplicacoesFinanceiras = new MultiOperacoesFinanceiras[50];
   int numAgencia, numConta;
   int nRegAplicacoes;
   double saldoConta;
 
-  public Cliente() {
+  public ContaFinanceira() {
     cliente = new DadosPessoais();
     numAgencia = -1;
     numConta = -1;
@@ -35,39 +35,75 @@ public class Cliente {
       throw new IllegalStateException("Limite de 50 aplicações atingido.");
     }
 
+    if (!Double.isFinite(valorAplicacao) || valorAplicacao < 0) {
+      throw new IllegalArgumentException("Valor da aplicação inválido.");
+    }
+
+    if (valorAplicacao > saldoConta) {
+      throw new IllegalArgumentException("Saldo Insuficiente.");
+    }
+
     aplicacoesFinanceiras[nRegAplicacoes].setCadastroDadosOperacao(
         diaOpera, mesOpera, anoOpera, nomeAplicacao, numAplicacao,
         valorAplicacao, taxaDiaria, taxaMes,
         tipoDeRenda, tempoFinalInvestimento, tempoMinimoPermanencia,
         tipoResgate, Iof, tipoImposto, descricao);
 
+    saldoConta -= valorAplicacao;
     nRegAplicacoes++;
 
   }
 
   public void setCadastroCliente(String nom, String cpf, String celu, int numeroAgencia, int numeroConta,
       double saldo) {
-    cliente.cadastrarDados(nom, cpf, celu);
-
+    if (numeroAgencia < 0 || numeroConta < 0 || !Double.isFinite(saldo) || saldo < 0) {
+      throw new IllegalArgumentException("Agência, conta ou saldo inválido.");
+    }
+    DadosPessoais dados = new DadosPessoais();
+    dados.cadastrarDados(nom, cpf, celu);
+    cliente = dados;
     numAgencia = numeroAgencia;
     numConta = numeroConta;
     saldoConta = saldo;
   }
 
   public void realizarAporte(int pos, int di, int me, int an, double valor) {
-
+    MultiOperacoesFinanceiras investimento = obterAplicacao(pos);
+    if (!Double.isFinite(valor) || valor <= 0) {
+      throw new IllegalArgumentException("Informe um valor positivo e finito.");
+    }
     if (valor > saldoConta) {
       throw new IllegalArgumentException("Valor superior ao saldo da Conta!!");
     }
 
-    int resultado = aplicacoesFinanceiras[pos].realizarAporte(di, me, an, valor);
+    int resultado = investimento.realizarAporte(di, me, an, valor);
 
     if (resultado == 1) {
       saldoConta -= valor;
     }
   }
 
+  public int realizarResgate(int posAplicacao, int d, int m, int an, double vl) {
+    int result = obterAplicacao(posAplicacao).realizarResgate(d, m, an, vl);
+
+    if (result == 1) {
+      saldoConta += vl;
+    }
+
+    return result;
+  }
+
+  public String getMotivoRecusaResgate(int posAplicacao, double valor) {
+    if (posAplicacao < 0 || posAplicacao >= nRegAplicacoes) {
+      throw new IllegalArgumentException("Aplicação não cadastrada.");
+    }
+
+    return aplicacoesFinanceiras[posAplicacao]
+        .getMotivoRecusaResgate(valor);
+  }
+
   public void atualizarAplicacao(int di, int me, int ano) {
+    validarAtualizacao(LocalDate.of(ano, me, di));
     for (int pos = 0; pos < nRegAplicacoes; pos++) {
       aplicacoesFinanceiras[pos].atualizarSaldo(di, me, ano);
     }
@@ -96,15 +132,15 @@ public class Cliente {
   }
 
   public String getExtrato(int pos, LocalDate ini, LocalDate fi) {
-    if (ini.isAfter(fi)) {
+    if (ini == null || fi == null || ini.isAfter(fi)) {
       throw new IllegalArgumentException("Período inválido");
     }
 
-    return aplicacoesFinanceiras[pos].getExtrato(ini, fi);
+    return obterAplicacao(pos).getExtrato(ini, fi);
   }
 
   public String getExtrato(LocalDate ini, LocalDate fi) {
-    if (ini.isAfter(fi)) {
+    if (ini == null || fi == null || ini.isAfter(fi)) {
       throw new IllegalArgumentException("Período inválido");
     }
 
@@ -121,15 +157,15 @@ public class Cliente {
     return extratoTotal.toString();
   }
 
-  public double getSaldo(int pos) {
-    return aplicacoesFinanceiras[pos].getSaldo();
+  public double getSaldoAplicacao(int pos) {
+    return obterAplicacao(pos).getSaldo();
   }
 
-  public double getSaldo() {
+  public double getSaldoTotalAplicacoes() {
     double total = 0;
 
     for (int pos = 0; pos < nRegAplicacoes; pos++) {
-      total += getSaldo(pos);
+      total += getSaldoAplicacao(pos);
     }
 
     return total;
@@ -140,6 +176,9 @@ public class Cliente {
   }
 
   public void setNumAgencia(int numAge) {
+    if (numAge < 0) {
+      throw new IllegalArgumentException("Agência inválida.");
+    }
     numAgencia = numAge;
   }
 
@@ -148,6 +187,9 @@ public class Cliente {
   }
 
   public void setNumConta(int numCo) {
+    if (numCo < 0) {
+      throw new IllegalArgumentException("Conta inválida.");
+    }
     numConta = numCo;
   }
 
@@ -156,7 +198,66 @@ public class Cliente {
   }
 
   public void setSaldo(double saldoCon) {
+    if (!Double.isFinite(saldoCon) || saldoCon < 0) {
+      throw new IllegalArgumentException("Saldo inválido.");
+    }
     saldoConta = saldoCon;
+  }
+
+  public String listarAplicacoes() {
+    if (nRegAplicacoes == 0) {
+      return "Nenhuma aplicação cadastrada";
+    }
+
+    StringBuilder lista = new StringBuilder();
+
+    for (int pos = 0; pos < nRegAplicacoes; pos++) {
+      MultiOperacoesFinanceiras investimentos = aplicacoesFinanceiras[pos];
+
+      lista.append("Posição:  ").append(pos)
+          .append("\nNome:  ").append(investimentos.getNomeAplicacao())
+          .append("\nNúmero:  ").append(investimentos.getNumeroAplicacao())
+          .append("\nSaldo líquido: R$ ").append(String.format("%.2f", investimentos.getSaldo()))
+          .append("\n\n");
+    }
+
+    return lista.toString();
+  }
+
+  public String getDetalhesAplicacao(int posAplicacao) {
+    return obterAplicacao(posAplicacao).getDetalhesAplicacao();
+  }
+
+  private MultiOperacoesFinanceiras obterAplicacao(int pos) {
+    if (pos < 0 || pos >= nRegAplicacoes) {
+      throw new IllegalArgumentException("Aplicação não cadastrada.");
+    }
+    return aplicacoesFinanceiras[pos];
+  }
+
+  public DadosPessoais getCliente() {
+    return cliente;
+  }
+
+  public int getNRegAplicacoes() {
+    return nRegAplicacoes;
+  }
+
+  AplicacaoFinanceira[] getAplicacoesRegistradas() {
+    AplicacaoFinanceira[] dados = new AplicacaoFinanceira[nRegAplicacoes];
+    for (int pos = 0; pos < nRegAplicacoes; pos++) {
+      dados[pos] = aplicacoesFinanceiras[pos].getAplicacao();
+    }
+    return dados;
+  }
+
+  void validarAtualizacao(LocalDate data) {
+    if (data == null || data.getDayOfWeek().getValue() > 5) {
+      throw new IllegalArgumentException("A atualização deve ocorrer de segunda a sexta-feira.");
+    }
+    for (int pos = 0; pos < nRegAplicacoes; pos++) {
+      aplicacoesFinanceiras[pos].validarAtualizacao(data);
+    }
   }
 
   public int arquivoSalvarDados(String pasta) {
@@ -231,8 +332,7 @@ public class Cliente {
         }
       }
 
-      MultiOperacoesFinanceiras[] aplicacoesLidas =
-          new MultiOperacoesFinanceiras[aplicacoesFinanceiras.length];
+      MultiOperacoesFinanceiras[] aplicacoesLidas = new MultiOperacoesFinanceiras[aplicacoesFinanceiras.length];
       AplicacaoFinanceira[] anteriores = new AplicacaoFinanceira[aplicacoesFinanceiras.length];
       AplicacaoFinanceira[] novas = new AplicacaoFinanceira[aplicacoesFinanceiras.length];
 

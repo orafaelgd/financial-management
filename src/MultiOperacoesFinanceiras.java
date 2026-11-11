@@ -22,7 +22,7 @@ public class MultiOperacoesFinanceiras {
       double vlap, double txdia, double txmes,
       int tiporend, int tmpfinal, int tempomin,
       int tiporesg, int tipoiof, int tipoimposto, String des) {
-
+    validarEspacoHistorico();
     aplicacao.setCadastro(nmap, nap, vlap, txdia, txmes, tiporend,
         tmpfinal, tempomin, tiporesg, tipoiof, tipoimposto, di, me, an);
 
@@ -30,19 +30,19 @@ public class MultiOperacoesFinanceiras {
   }
 
   public void setCadastroDadosOperacao(int di, int me, int an, double valor, String des) {
-    OperacaoFinanceira lancamento = operacao[qtdOperacoes];
+    validarEspacoHistorico();
     aplicacao.atualizarDiaAplicação(di, me, an);
-
-    lancamento.setCadastrarOperacao(di, me, an, valor, des);
-    qtdOperacoes++;
+    registrarOperacao(di, me, an, valor, des);
   }
 
   private void registrarOperacao(int di, int me, int an, double valor, String des) {
+    validarEspacoHistorico();
     operacao[qtdOperacoes].setCadastrarOperacao(di, me, an, valor, des);
     qtdOperacoes++;
   }
 
   public void atualizarSaldo(int d, int me, int an) {
+    validarAtualizacao(LocalDate.of(an, me, d));
     OperacaoFinanceira lancamento = operacao[qtdOperacoes];
     aplicacao.atualizarDiaAplicação(d, me, an);
 
@@ -52,6 +52,9 @@ public class MultiOperacoesFinanceiras {
   }
 
   public String getExtrato(LocalDate inicio, LocalDate fim) {
+    if (inicio == null || fim == null || inicio.isAfter(fim)) {
+      throw new IllegalArgumentException("Período inválido.");
+    }
     StringBuilder extrato = new StringBuilder();
 
     extrato.append("Aplicação: ")
@@ -91,9 +94,8 @@ public class MultiOperacoesFinanceiras {
   }
 
   public int realizarAporte(int dia, int mes, int ano, double valor) {
-    if (qtdOperacoes >= operacao.length) {
-      throw new IllegalStateException("Histórico de operações cheio");
-    }
+    validarValorMovimentacao(valor);
+    validarEspacoHistorico();
 
     aplicacao.atualizarDiaAplicação(dia, mes, ano);
     int resultado = aplicacao.aporteValor(valor);
@@ -105,6 +107,57 @@ public class MultiOperacoesFinanceiras {
     return resultado;
   }
 
+  public int realizarResgate(int d, int m, int an, double vl) {
+    validarValorMovimentacao(vl);
+    validarEspacoHistorico();
+
+    aplicacao.atualizarDiaAplicação(d, m, an);
+
+    int result = aplicacao.resgateValor(vl);
+
+    if (result == 1) {
+      registrarOperacao(d, m, an, -vl, "Resgate");
+    }
+
+    return result;
+  }
+
+  private void validarValorMovimentacao(double valor) {
+    if (!Double.isFinite(valor) || valor <= 0) {
+      throw new IllegalArgumentException("Informe um valor positivo e finito.");
+    }
+  }
+
+  private void validarEspacoHistorico() {
+    if (qtdOperacoes >= operacao.length) {
+      throw new IllegalStateException("Histórico de operações cheio.");
+    }
+  }
+
+  void validarAtualizacao(LocalDate data) {
+    validarEspacoHistorico();
+    aplicacao.validarDataAtualizacao(data);
+  }
+
+  public String getMotivoRecusaResgate(double valo) {
+    return aplicacao.getMotivoRecusaResgate(valo);
+  }
+
+  public String getSituacaoAplicacao() {
+    switch (aplicacao.getSTATUS()) {
+      case 0:
+        return "Não cadastrada";
+      case 1:
+        return "Ativa";
+      case 2:
+        return "Bloqueada";
+      case 3:
+        return "Cancelada";
+      default:
+        return "Situação desconhecida";
+    }
+  }
+
   public String getExtrato() {
     LocalDate fim = LocalDate.now();
     LocalDate inicio = fim.minusDays(29);
@@ -114,6 +167,91 @@ public class MultiOperacoesFinanceiras {
 
   public double getSaldo() {
     return aplicacao.getVALORATUALLIQUIDO();
+  }
+
+  public String getNomeAplicacao() {
+    return aplicacao.getNOMEAPLICACAO();
+  }
+
+  public String getNumeroAplicacao() {
+    return aplicacao.getNUMEROAPLICACAPFINANCEIRA();
+  }
+
+  public String getDetalhesAplicacao() {
+    return String.format(
+        "Nome: %s\n" +
+            "Número: %s\n" +
+            "Total aportado: R$ %.2f\n" +
+            "Saldo bruto: R$ %.2f\n" +
+            "Saldo líquido: R$ %.2f\n" +
+            "Rendimento bruto: R$ %.2f\n" +
+            "Rendimento líquido: R$ %.2f\n" +
+            "Imposto calculado: R$ %.2f\n" +
+            "Total resgatado: R$ %.2f\n" +
+            "Situação: %s\n",
+        getNomeAplicacao(),
+        getNumeroAplicacao(),
+        aplicacao.getVALORAPLICADO(),
+        aplicacao.getVALORATUALBRUTO(),
+        aplicacao.getVALORATUALLIQUIDO(),
+        aplicacao.getRENDIMENTOATUALBRUTO(),
+        aplicacao.getRENDIMENTOATUALLIQUIDO(),
+        aplicacao.getIMPOSTOATUALDEVIDO(),
+        aplicacao.getVALORRESGATADO(),
+        getSituacaoAplicacao()) + "\n" + getCondicoesAplicacao();
+  }
+
+  public String getCondicoesAplicacao() {
+    return String.format(
+        java.util.Locale.forLanguageTag("pt-BR"),
+        "Taxa diária: %.6f%%\n" +
+            "Taxa mensal: %.2f%%\n" +
+            "Prazo final: %d dias efetivos de rendimento\n" +
+            "Permanência mínima: %d dias corridos\n" +
+            "Rendimento: %s\n" +
+            "Periodicidade do resgate: %s\n",
+        aplicacao.getTAXADIARIA(),
+        aplicacao.getTAXAMENSAL(),
+        aplicacao.getTEMPOFINALINVESTIMENTO(),
+        aplicacao.getTEMPOMINIMOPERMANENCIA(),
+        getDescricaoRendimentos(),
+        getDescricaoResgate());
+  }
+
+  public String getDescricaoRendimentos() {
+    switch (aplicacao.getTIPORENDIMENTO()) {
+      case 0:
+        return "A cada dia efetivo";
+      case 1:
+        return "A cada 30 dias efetivos";
+      case 2:
+        return "A cada 90 dias efetivos";
+      case 3:
+        return "A cada 180 dias efetivos";
+      case 4:
+        return "A cada 365 dias efetivos";
+      case 5:
+        return "Ao completar o prazo final em dias efetivos";
+      default:
+        return "Tipo desconhecido...";
+    }
+  }
+
+  public String getDescricaoResgate() {
+    switch (aplicacao.getTIPORESGATE()) {
+      case 0:
+        return "Sem intervalo periódico";
+      case 1:
+        return "A cada 30 dias corridos desde o cadastro";
+      case 2:
+        return "A cada 90 dias corridos desde o cadastro";
+      case 3:
+        return "A cada 180 dias corridos desde o cadastro";
+      case 4:
+        return "A cada 365 dias corridos desde o cadastro";
+      default:
+        return "Tipo desconhecido";
+    }
   }
 
   public int arquivoSalvarDados(String nm) {

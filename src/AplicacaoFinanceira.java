@@ -1,9 +1,12 @@
 import java.time.LocalDate;
+import java.time.DayOfWeek;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class AplicacaoFinanceira {
-    private static final Set<String> numerosCadastrados = new HashSet<>();
+    private static final Map<String, AplicacaoFinanceira> numerosCadastrados = new HashMap<>();
 
     protected String NOMEAPLICACAO, NUMEROAPLICACAPFINANCEIRA;
     protected double VALORAPLICADO, VALORRESGATADO, VALORATUALBRUTO, VALORATUALLIQUIDO;
@@ -29,8 +32,8 @@ public class AplicacaoFinanceira {
     }
 
     public int setCadastro(String nmap, String nap, double vlap, double txdia, double txmes,
-                           int tiporend, int tmpfinal, int tempomin, int tiporesg,
-                           int tipoiof, int tipoimposto, int dd, int mm, int aaaa) {
+            int tiporend, int tmpfinal, int tempomin, int tiporesg,
+            int tipoiof, int tipoimposto, int dd, int mm, int aaaa) {
 
         LocalDate dataCadastro = LocalDate.of(aaaa, mm, dd);
 
@@ -83,9 +86,9 @@ public class AplicacaoFinanceira {
 
     // Mantem os nomes dos metodos que ja existiam no projeto.
     public int setCadastroAPLICACAOFINANCEIRA(String nmap, String nap, double vlap,
-                                             double txdia, double txmes, int tiporend,
-                                             int tmpfinal, int tempomin, int tiporesg,
-                                             int tipoiof, int tipoimposto, int dd, int mm, int aaaa) {
+            double txdia, double txmes, int tiporend,
+            int tmpfinal, int tempomin, int tiporesg,
+            int tipoiof, int tipoimposto, int dd, int mm, int aaaa) {
         return setCadastro(nmap, nap, vlap, txdia, txmes, tiporend, tmpfinal,
                 tempomin, tiporesg, tipoiof, tipoimposto, dd, mm, aaaa);
     }
@@ -96,19 +99,25 @@ public class AplicacaoFinanceira {
     }
 
     public int setCadastroSELICDIARIA(String nap, double vlap, double txdia, double txmes,
-                                     int tmpfinal, int tempomin, int dd, int mm, int aaaa) {
+            int tmpfinal, int tempomin, int dd, int mm, int aaaa) {
         return setCadastro("SELICDIARIA", nap, vlap, txdia, txmes,
                 0, tmpfinal, tempomin, 0, 1, 1, dd, mm, aaaa);
     }
 
     private int getPeriodo(int tipo) {
         switch (tipo) {
-            case 0: return 1;
-            case 1: return 30;
-            case 2: return 90;
-            case 3: return 180;
-            case 4: return 365;
-            default: return TEMPOFINALINVESTIMENTO;
+            case 0:
+                return 1;
+            case 1:
+                return 30;
+            case 2:
+                return 90;
+            case 3:
+                return 180;
+            case 4:
+                return 365;
+            default:
+                return TEMPOFINALINVESTIMENTO;
         }
     }
 
@@ -120,10 +129,18 @@ public class AplicacaoFinanceira {
         int periodo = getPeriodo(TIPORENDIMENTO);
         double taxaPeriodo = TAXADIARIA;
         switch (TIPORENDIMENTO) {
-            case 1: taxaPeriodo = TAXAMENSAL; break;
-            case 2: taxaPeriodo = TAXAMENSAL * 3; break;
-            case 3: taxaPeriodo = TAXAMENSAL * 6; break;
-            case 4: taxaPeriodo = TAXAMENSAL * 12; break;
+            case 1:
+                taxaPeriodo = TAXAMENSAL;
+                break;
+            case 2:
+                taxaPeriodo = TAXAMENSAL * 3;
+                break;
+            case 3:
+                taxaPeriodo = TAXAMENSAL * 6;
+                break;
+            case 4:
+                taxaPeriodo = TAXAMENSAL * 12;
+                break;
             case 5:
                 // Rendimento diario acumulado, creditado somente no vencimento.
                 taxaPeriodo = (Math.pow(1 + TAXADIARIA / 100, periodo) - 1) * 100;
@@ -185,20 +202,8 @@ public class AplicacaoFinanceira {
 
     // Use este metodo para avancar o calendario, sem somar incrementos manuais.
     public void atualizarDiaAplicação(int d, int m, int a) {
-        if (ultimaDataProcessada == null) {
-            throw new IllegalStateException("Cadastre a aplicacao primeiro.");
-        }
-
         LocalDate dataInformada = LocalDate.of(a, m, d);
-        int diaSemanaInformado = new CalculaDiaSemana(d, m, a).diaSemana();
-        if (diaSemanaInformado == 0 || diaSemanaInformado == 1) {
-            throw new IllegalArgumentException(
-                    "A atualizacao deve ocorrer de segunda a sexta-feira.");
-        }
-        if (dataInformada.isBefore(ultimaDataProcessada)) {
-            throw new IllegalArgumentException(
-                    "A data nao pode ser anterior a ultima atualizacao.");
-        }
+        validarDataAtualizacao(dataInformada);
         if (STATUS != 1) {
             return;
         }
@@ -222,6 +227,25 @@ public class AplicacaoFinanceira {
         atualizarSaldo();
     }
 
+    // Permite validar uma atualizacao coletiva antes de alterar qualquer aplicacao.
+    void validarDataAtualizacao(LocalDate dataInformada) {
+        if (ultimaDataProcessada == null) {
+            throw new IllegalStateException("Cadastre a aplicacao primeiro.");
+        }
+        if (dataInformada == null) {
+            throw new IllegalArgumentException("Informe a data da atualizacao.");
+        }
+        if (dataInformada.getDayOfWeek() == DayOfWeek.SATURDAY
+                || dataInformada.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            throw new IllegalArgumentException(
+                    "A atualizacao deve ocorrer de segunda a sexta-feira.");
+        }
+        if (dataInformada.isBefore(ultimaDataProcessada)) {
+            throw new IllegalArgumentException(
+                    "A data nao pode ser anterior a ultima atualizacao.");
+        }
+    }
+
     public int aporteValor(double valor) {
         if (STATUS != 1 || !Double.isFinite(valor) || valor <= 0) {
             return 0;
@@ -235,25 +259,52 @@ public class AplicacaoFinanceira {
 
     // Recebe o valor liquido desejado. Retorna 1 para sucesso ou 0 para erro.
     public int resgateValor(double valorResgate) {
-        if (STATUS != 1 || !Double.isFinite(valorResgate) || valorResgate <= 0 || TEMPOATUALIZADOAPLICACAO < TEMPOMINIMOPERMANENCIA) {
-            return 0;
-        }
-        int periodo = getPeriodo(TIPORESGATE);
-        if (TIPORESGATE != 0 && TEMPOATUALIZADOAPLICACAO < TEMPOFINALINVESTIMENTO && (TEMPOATUALIZADOAPLICACAO < periodo || TEMPOATUALIZADOAPLICACAO % periodo != 0)) {
-            return 0;
-        }
-
         atualizarSaldo();
-        if (valorResgate > VALORATUALLIQUIDO) {
+
+        String motivo = getMotivoRecusaResgate(valorResgate);
+
+        if (!motivo.isEmpty()) {
             return 0;
         }
 
         double parteRestante = 1 - valorResgate / VALORATUALLIQUIDO;
+
         VALORATUALBRUTO *= parteRestante;
         RENDIMENTOATUALBRUTO *= parteRestante;
         VALORRESGATADO += valorResgate;
+
         atualizarSaldo();
         return 1;
+    }
+
+    public String getMotivoRecusaResgate(double valor) {
+        if (STATUS != 1) {
+            return "A aplicação não está ativa.";
+        }
+
+        if (!Double.isFinite(valor) || valor <= 0) {
+            return "Informe um valor positivo e finito.";
+        }
+
+        if (TEMPOATUALIZADOAPLICACAO < TEMPOMINIMOPERMANENCIA) {
+            return "A permanência mínima ainda não foi cumprida.";
+        }
+
+        int periodo = getPeriodo(TIPORESGATE);
+
+        if (TIPORESGATE != 0
+                && TEMPOATUALIZADOAPLICACAO < TEMPOFINALINVESTIMENTO
+                && (TEMPOATUALIZADOAPLICACAO < periodo
+                        || TEMPOATUALIZADOAPLICACAO % periodo != 0)) {
+
+            return "A data processada está fora do período permitido para resgate.";
+        }
+
+        if (valor > VALORATUALLIQUIDO) {
+            return "O valor solicitado supera o saldo líquido da aplicação.";
+        }
+
+        return "";
     }
 
     private void validarValor(double valor) {
@@ -291,11 +342,11 @@ public class AplicacaoFinanceira {
         if (numero.equals(NUMEROAPLICACAPFINANCEIRA)) {
             return;
         }
-        if (numerosCadastrados.contains(numero)) {
+        if (numerosCadastrados.containsKey(numero) && numerosCadastrados.get(numero) != this) {
             throw new IllegalArgumentException("Numero de aplicacao ja cadastrado.");
         }
-        numerosCadastrados.remove(NUMEROAPLICACAPFINANCEIRA);
-        numerosCadastrados.add(numero);
+        numerosCadastrados.remove(NUMEROAPLICACAPFINANCEIRA, this);
+        numerosCadastrados.put(numero, this);
         NUMEROAPLICACAPFINANCEIRA = numero;
     }
 
@@ -514,28 +565,26 @@ public class AplicacaoFinanceira {
     }
 
     static void registrarDadosLidos(AplicacaoFinanceira[] anteriores, AplicacaoFinanceira[] novas) {
-        Set<String> numerosAnteriores = new HashSet<>();
-        Set<String> numerosNovos = new HashSet<>();
-
-        for (AplicacaoFinanceira aplicacao : anteriores) {
-            if (!aplicacao.NUMEROAPLICACAPFINANCEIRA.isEmpty()) {
-                numerosAnteriores.add(aplicacao.NUMEROAPLICACAPFINANCEIRA);
-            }
-        }
+        Set<AplicacaoFinanceira> objetosAnteriores = new HashSet<>();
+        java.util.Collections.addAll(objetosAnteriores, anteriores);
+        Map<String, AplicacaoFinanceira> numerosNovos = new HashMap<>();
 
         for (AplicacaoFinanceira aplicacao : novas) {
             String numero = aplicacao.NUMEROAPLICACAPFINANCEIRA;
             if (numero.isEmpty()) {
                 continue;
             }
-            if (!numerosNovos.add(numero)
-                    || (numerosCadastrados.contains(numero) && !numerosAnteriores.contains(numero))) {
+            AplicacaoFinanceira titular = numerosCadastrados.get(numero);
+            if (numerosNovos.putIfAbsent(numero, aplicacao) != null
+                    || (titular != null && titular != aplicacao && !objetosAnteriores.contains(titular))) {
                 throw new IllegalArgumentException("Numero de aplicacao ja cadastrado.");
             }
         }
 
-        numerosCadastrados.removeAll(numerosAnteriores);
-        numerosCadastrados.addAll(numerosNovos);
+        for (AplicacaoFinanceira anterior : anteriores) {
+            numerosCadastrados.remove(anterior.NUMEROAPLICACAPFINANCEIRA, anterior);
+        }
+        numerosCadastrados.putAll(numerosNovos);
     }
 
     public void setDiasCalculos(int dias) {

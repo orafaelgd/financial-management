@@ -1,15 +1,16 @@
 # Aplicação financeira
 
-Exercício em Java, sem bibliotecas externas. A classe `AplicacaoFinanceira`
-pode ser herdada e mantém os nomes dos atributos e métodos do código original.
-O `Main` mostra um cadastro, a passagem de 30 dias, os saldos e um resgate.
+Exercício em Java, sem bibliotecas externas. `Clientes` gerencia contas,
+aplicações e históricos por delegação a `ContaFinanceira`,
+`MultiOperacoesFinanceiras` e `AplicacaoFinanceira`.
+O `Main` demonstra cadastro, consulta, resgate autorizado, recusa e extrato.
 
 ## Executar
 
 Na pasta do projeto:
 
 ```powershell
-javac -encoding UTF-8 -d bin src/AplicacaoFinanceira.java src/Main.java
+javac -encoding UTF-8 -d bin src/*.java
 java -cp bin Main
 ```
 
@@ -39,8 +40,8 @@ java -cp bin Main
   contados desde o cadastro. No vencimento e depois dele, libera o resgate
   independentemente da periodicidade. Permite retirar todo o saldo.
   O total resgatado é acumulado; saldos, rendimentos e imposto devido passam
-  a representar a parte que permanece aplicada. O valor aplicado conserva
-  o aporte inicial.
+  a representar a parte que permanece aplicada. O valor aplicado acumula
+  o investimento inicial e os aportes, sem diminuir nos resgates.
 - Todos os atributos têm getters e setters. Os setters das taxas mantêm a
   conversão automática. Para efetuar uma retirada, use `resgateValor`;
   `setVALORRESGATADO` apenas altera o total armazenado. Depois de alterar
@@ -49,3 +50,56 @@ java -cp bin Main
 No exemplo, R$ 1.000,00 a 1% ao mês geram R$ 10,00 brutos em 30 dias,
 R$ 2,25 de imposto e saldo líquido de R$ 1.007,75. Após resgatar R$ 100,00,
 restam R$ 907,75.
+
+## Gerenciamento de múltiplos clientes (item 7)
+
+O construtor e a estrutura com 100 posições foram mantidos. Cadastros inválidos
+lançam uma exceção antes de alterar os dados ou incrementar o contador.
+
+```java
+Clientes cadastro = new Clientes();
+cadastro.setCadastro("Cliente de exemplo", "52998224725", "11999999999", 1, 1001, 2000);
+
+// Todos os clientes, uma conta ou uma aplicação. Os valores são saldos líquidos investidos.
+double geral = cadastro.getSaldo();
+double porCliente = cadastro.getSaldo(0);
+// double individual = cadastro.getSaldo(0, 0); // Após cadastrar a aplicação.
+
+// Todas as aplicações de todos os clientes; somente de segunda a sexta-feira.
+cadastro.atualizarAplicacao(11, 11, 2026);
+```
+
+As sobrecargas de `getExtrato` permitem consultar:
+
+- `getExtrato()`: todos os clientes, últimos 30 dias, incluindo hoje.
+- `getExtrato(posCliente)`: todas as aplicações de uma conta, últimos 30 dias.
+- `getExtrato(posCliente, posAplicacao)`: uma aplicação, últimos 30 dias.
+- As três consultas também aceitam `LocalDate inicio, LocalDate fim` no final,
+  com limites inclusivos. No extrato geral, os argumentos são somente as datas.
+
+Os nomes anteriores (`getExtratoTotal`, `getExtratoAplicacao`, `getExtratoData`,
+`getSaldoTotalAplicacoes` e `getSaldoAplicacao`) continuam disponíveis.
+A atualização coletiva valida a data e o espaço no histórico de todas as
+aplicações antes de iniciar, evitando atualizar apenas parte do cadastro.
+Uma consulta de saldo não avança automaticamente o calendário.
+
+Há acessores para os dados pessoais, agência, conta e saldo da conta.
+`getClientes()` retorna uma cópia do array de contas cadastradas, com referências
+às contas; não é uma cópia profunda. `setClientes(...)` recebe somente as contas
+cadastradas, sem posições vazias ou repetidas, e ajusta o contador. `setCliente`
+substitui uma posição ou inclui na próxima disponível. `setNRegistroClientes`
+permite reduzir o cadastro; aumentar a quantidade exige cadastrar as contas.
+
+## Verificação
+
+Com Java 11 ou superior, os testes de integração podem ser executados sem JUnit:
+
+```powershell
+$sgiTeste = Join-Path ([System.IO.Path]::GetTempPath()) ('sgi-test-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $sgiTeste | Out-Null
+javac -encoding UTF-8 -d $sgiTeste src/*.java tests/ClientesIntegrationTest.java
+java -cp $sgiTeste ClientesIntegrationTest
+```
+
+Os testes cobrem múltiplos clientes/aplicações, filtros de extrato, atualização
+coletiva, fins de semana, CPF inválido, saldos, movimentações e acessores.

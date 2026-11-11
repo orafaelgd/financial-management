@@ -25,20 +25,19 @@ public class DadosPessoais {
 
   // === SET ATRIBUTOS === \\
   public void setNome(String nm) {
+    if (nm == null || nm.trim().isEmpty()) {
+      throw new IllegalArgumentException("Informe o nome do cliente.");
+    }
     nome = nm;
   }
 
   public void setCelular(String cl) {
+    Objects.requireNonNull(cl, "Informe o celular.");
     celular = cl;
   }
 
   public void setCpf(String cp) {
-    if (validaCPF(cp) != true) {
-      System.out.println("CPF inválido");
-      return;
-    }
-
-    cpf = cp;
+    cpf = normalizarCpf(cp);
   }
   // ===============
 
@@ -49,11 +48,9 @@ public class DadosPessoais {
   }
 
   public void cadastrarDados(String nm, String cp, String cel) {
-
-    String cpfFormatado = cp.replaceAll("\\D", "");
-    if (validaCPF(cpfFormatado) != true) {
-      System.out.println("\nCPF inválida!!!!!!");
-      return;
+    String cpfFormatado = normalizarCpf(cp);
+    if (nm == null || nm.trim().isEmpty() || cel == null) {
+      throw new IllegalArgumentException("Informe nome e celular do cliente.");
     }
 
     nome = nm;
@@ -64,18 +61,13 @@ public class DadosPessoais {
   public void alterarDadosPessoais(String variavel, String dado) {
     switch (variavel) {
       case "nome":
-        nome = dado;
+        setNome(dado);
         break;
       case "cpf":
-        if (validaCPF(dado) != true) {
-          System.out.println("CPF inválido...");
-          return;
-        }
-
-        cpf = dado;
+        setCpf(dado);
         break;
       case "celular":
-        celular = dado;
+        setCelular(dado);
         break;
       default:
         break;
@@ -84,7 +76,7 @@ public class DadosPessoais {
 
   @Override
   public String toString() {
-    return String.format("nome: %s | cpf: %s | endereço: %s | Data Nascimento: %s | celular: %s", nome, cpf, celular);
+    return String.format("nome: %s | cpf: %s | celular: %s", nome, cpf, celular);
   }
 
   @Override
@@ -103,10 +95,21 @@ public class DadosPessoais {
     if (getClass() != ob.getClass())
       return false;
 
-    if (!toString().equals(ob.toString()))
-      return false;
+    DadosPessoais outro = (DadosPessoais) ob;
+    return Objects.equals(nome, outro.nome)
+        && Objects.equals(cpf, outro.cpf)
+        && Objects.equals(celular, outro.celular);
+  }
 
-    return true;
+  private String normalizarCpf(String cp) {
+    if (cp == null) {
+      throw new IllegalArgumentException("Informe um CPF válido.");
+    }
+    String numero = cp.replaceAll("\\D", "");
+    if (!validaCPF(numero)) {
+      throw new IllegalArgumentException("CPF inválido.");
+    }
+    return numero;
   }
 
   private boolean validaCPF(String cp) {
