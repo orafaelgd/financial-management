@@ -16,37 +16,51 @@ public class Clientes {
     nRegistroClientes = 0;
   }
 
+  public int getNRegistro() {
+    return nRegistroClientes;
+  }
+
   public void setNumAgencia(int numA, int pos) {
-    getCliente(pos).setNumAgencia(numA);
+    clientes[pos].setNumAgencia(numA);
   }
 
   public void setNumConta(int numCon, int pos) {
-    getCliente(pos).setNumConta(numCon);
+    clientes[pos].setNumConta(numCon);
   }
 
   public void setSaldoConta(double sald, int pos) {
-    getCliente(pos).setSaldo(sald);
+    clientes[pos].setSaldo(sald);
   }
 
   public int getNumAgencia(int pos) {
-    return getCliente(pos).getNumAgencia();
+    return clientes[pos].getNumAgencia();
   }
 
   public int getNumConta(int pos) {
-    return getCliente(pos).getNumConta();
+    return clientes[pos].getNumConta();
   }
 
   public double getSaldoConta(int pos) {
-    return getCliente(pos).getSaldoConta();
+    return clientes[pos].getSaldoConta();
   }
 
-  public void setCadastroCliente(String nom, String cpf, String celu, int numeroAgencia, int numeroConta,
+  public String listarClientes() {
+    return toString();
+  }
+
+  public int setCadastroCliente(String nom, String cpf, String celu, int numeroAgencia, int numeroConta,
       double saldo) {
     if (nRegistroClientes >= clientes.length) {
-      throw new IllegalStateException("Limite de clientes atingido.");
+      return 0;
     }
-    clientes[nRegistroClientes].setCadastroCliente(nom, cpf, celu, numeroAgencia, numeroConta, saldo);
-    nRegistroClientes++;
+    try {
+      clientes[nRegistroClientes].setCadastroCliente(nom, cpf, celu, numeroAgencia, numeroConta, saldo);
+      nRegistroClientes++;
+      return 1;
+    } catch (IllegalArgumentException e) {
+      System.out.println("\n" + e + "\n");
+      return 0;
+    }
   }
 
   public void setCadastroAplicacao(int posCliente, int dia, int mes, int ano,
@@ -56,7 +70,7 @@ public class Clientes {
       int tipoDeRenda, int tempoFinalInvestimento, int tempoMinimoPermanencia,
       int tipoResgate, int Iof, int tipoImposto, String descricao) {
 
-    getCliente(posCliente).setCadastroAplicacao(dia, mes, ano, diaOpera, mesOpera, anoOpera, nomeAplicacao,
+    clientes[posCliente].setCadastroAplicacao(dia, mes, ano, diaOpera, mesOpera, anoOpera, nomeAplicacao,
         numAplicacao, valorAplicacao, taxaDiaria, taxaMes, tipoDeRenda, tempoFinalInvestimento, tempoMinimoPermanencia,
         tipoResgate, Iof, tipoImposto, descricao);
 
@@ -83,11 +97,11 @@ public class Clientes {
   }
 
   public String listarAplicacoes(int posCliente) {
-    return getCliente(posCliente).listarAplicacoes();
+    return clientes[posCliente].listarAplicacoes();
   }
 
   public String getDetalheAplicacao(int posCliente, int posAplicacao) {
-    return getCliente(posCliente).getDetalhesAplicacao(posAplicacao);
+    return clientes[posCliente].getDetalhesAplicacao(posAplicacao);
   }
 
   public void realizarAporte(int posCliente, int posAplicacao, int dia, int mes, int ano, double valor) {
@@ -96,15 +110,15 @@ public class Clientes {
       throw new IllegalArgumentException("Cliente não cadastrado.");
     }
 
-    getCliente(posCliente).realizarAporte(posAplicacao, dia, mes, ano, valor);
+    clientes[posCliente].realizarAporte(posAplicacao, dia, mes, ano, valor);
   }
 
   public int realizarResgate(int posCliente, int posAplicacao, int d, int m, int an, double vl) {
-    return getCliente(posCliente).realizarResgate(posAplicacao, d, m, an, vl);
+    return clientes[posCliente].realizarResgate(posAplicacao, d, m, an, vl);
   }
 
   public String getMotivoRecusaResgate(int posCliente, int posAplicacao, double vl) {
-    return getCliente(posCliente).getMotivoRecusaResgate(posAplicacao, vl);
+    return clientes[posCliente].getMotivoRecusaResgate(posAplicacao, vl);
   }
 
   public int arquivoSalvarDados(int posCliente, String pasta) {
@@ -132,13 +146,6 @@ public class Clientes {
   public void setCadastro(String nome, String cpf, String celular,
       int agencia, int conta, double saldo) {
     setCadastroCliente(nome, cpf, celular, agencia, conta, saldo);
-  }
-
-  public ContaFinanceira getCliente(int posCliente) {
-    if (posCliente < 0 || posCliente >= nRegistroClientes) {
-      throw new IllegalArgumentException("Cliente não cadastrado.");
-    }
-    return clientes[posCliente];
   }
 
   // A cópia protege a organização do array; as contas continuam acessíveis pelos
@@ -194,28 +201,43 @@ public class Clientes {
     }
   }
 
+  public void excluirCliente(int posCliente) {
+    if (posCliente < 0 || posCliente >= nRegistroClientes) {
+      throw new IllegalArgumentException("Cliente não cadastrado.");
+    }
+    ContaFinanceira[] contas = new ContaFinanceira[nRegistroClientes - 1];
+    int pos = 0;
+    for (int i = 0; i < nRegistroClientes; i++) {
+      if (i != posCliente) {
+        contas[pos] = clientes[i];
+        pos++;
+      }
+    }
+    setClientes(contas);
+  }
+
   public String getNome(int posCliente) {
-    return getCliente(posCliente).getCliente().getNome();
+    return clientes[posCliente].getCliente().getNome();
   }
 
   public void setNome(int posCliente, String nome) {
-    getCliente(posCliente).getCliente().setNome(nome);
+    clientes[posCliente].getCliente().setNome(nome);
   }
 
   public String getCpf(int posCliente) {
-    return getCliente(posCliente).getCliente().getCpf();
+    return clientes[posCliente].getCliente().getCpf();
   }
 
   public void setCpf(int posCliente, String cpf) {
-    getCliente(posCliente).getCliente().setCpf(cpf);
+    clientes[posCliente].getCliente().setCpf(cpf);
   }
 
   public String getCelular(int posCliente) {
-    return getCliente(posCliente).getCliente().getCelular();
+    return clientes[posCliente].getCliente().getCelular();
   }
 
   public void setCelular(int posCliente, String celular) {
-    getCliente(posCliente).getCliente().setCelular(celular);
+    clientes[posCliente].getCliente().setCelular(celular);
   }
 
   public void atualizarAplicacao(int dia, int mes, int ano) {
@@ -234,7 +256,7 @@ public class Clientes {
   }
 
   public void atualizarAplicacao(int posCliente, int dia, int mes, int ano) {
-    getCliente(posCliente).atualizarAplicacao(dia, mes, ano);
+    clientes[posCliente].atualizarAplicacao(dia, mes, ano);
   }
 
   public double getSaldo() {
@@ -246,11 +268,11 @@ public class Clientes {
   }
 
   public double getSaldo(int posCliente) {
-    return getCliente(posCliente).getSaldoTotalAplicacoes();
+    return clientes[posCliente].getSaldoTotalAplicacoes();
   }
 
   public double getSaldo(int posCliente, int posAplicacao) {
-    return getCliente(posCliente).getSaldoAplicacao(posAplicacao);
+    return clientes[posCliente].getSaldoAplicacao(posAplicacao);
   }
 
   public double getSaldoTotalAplicacoes() {
@@ -263,21 +285,21 @@ public class Clientes {
   }
 
   public String getExtrato(int posCliente) {
-    return getCliente(posCliente).getExtrato();
+    return clientes[posCliente].getExtrato();
   }
 
   public String getExtrato(int posCliente, int posAplicacao) {
-    return getCliente(posCliente).getExtrato(posAplicacao);
+    return clientes[posCliente].getExtrato(posAplicacao);
   }
 
   public String getExtrato(int posCliente, LocalDate inicio, LocalDate fim) {
     validarPeriodo(inicio, fim);
-    return getCliente(posCliente).getExtrato(inicio, fim);
+    return clientes[posCliente].getExtrato(inicio, fim);
   }
 
   public String getExtrato(int posCliente, int posAplicacao, LocalDate inicio, LocalDate fim) {
     validarPeriodo(inicio, fim);
-    return getCliente(posCliente).getExtrato(posAplicacao, inicio, fim);
+    return clientes[posCliente].getExtrato(posAplicacao, inicio, fim);
   }
 
   public String getExtrato(LocalDate inicio, LocalDate fim) {
@@ -307,5 +329,19 @@ public class Clientes {
       aplicacoes.addAll(Arrays.asList(contas[pos].getAplicacoesRegistradas()));
     }
     return aplicacoes.toArray(new AplicacaoFinanceira[0]);
+  }
+
+  @Override
+  public String toString() {
+    if (nRegistroClientes == 0) {
+      return "Nenhum cliente cadastrado.";
+    }
+    String cli = "";
+    for (int i = 0; i < nRegistroClientes; i++) {
+      cli += String.format("| %s || %s || %s || %s || %s || %s || %s |%n", i, getNome(i), getCpf(i), getCelular(i),
+          getNumAgencia(i), getNumConta(i), getSaldoConta(i));
+    }
+
+    return cli;
   }
 }
