@@ -3,7 +3,8 @@
 Exercício em Java, sem bibliotecas externas. `Clientes` gerencia contas,
 aplicações e históricos por delegação a `ContaFinanceira`,
 `MultiOperacoesFinanceiras` e `AplicacaoFinanceira`.
-O `Main` demonstra cadastro, consulta, resgate autorizado, recusa e extrato.
+O `Main` oferece um menu para cadastrar, consultar, alterar e excluir clientes,
+gerenciar aplicações, realizar aportes e resgates e salvar/carregar dados por cliente.
 
 ## Executar
 
